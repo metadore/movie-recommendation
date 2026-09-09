@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+databases[sqlite]
+sqlalchemy
+aiosqlite
+requests
+python-dotenv
+pydantic
+PyJWT
+httpx
+pytest

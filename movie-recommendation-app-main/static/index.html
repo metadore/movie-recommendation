@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CinePulse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="logo" href="/">CinePulse</a>
+    <nav class="nav">
+      <button type="button" data-scroll="catalog">Catalog</button>
+      <button type="button" data-scroll="recommend">Recommend</button>
+      <button type="button" data-scroll="favourites">Favourites</button>
+    </nav>
+    <div class="auth-box" id="authBox">
+      <input id="username" placeholder="Username" autocomplete="username" />
+      <input id="password" type="password" placeholder="Password" autocomplete="current-password" />
+      <button type="button" id="loginBtn" class="btn ghost">Sign in</button>
+      <button type="button" id="registerBtn" class="btn">Join</button>
+    </div>
+    <div class="user-chip hidden" id="userChip">
+      <span id="userLabel"></span>
+      <button type="button" id="logoutBtn" class="btn ghost">Out</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="brand-mark">CinePulse</p>
+        <h1>Find the next film that fits your night.</h1>
+        <p class="lede">Search the catalog, save favourites, and get recommendations shaped by what you actually watch.</p>
+        <div class="cta-row">
+          <button type="button" class="btn" data-scroll="recommend">Get recommendations</button>
+          <button type="button" class="btn ghost" data-scroll="catalog">Browse catalog</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="catalog" class="section">
+      <div class="section-head">
+        <h2>Catalog</h2>
+        <p>Browse, search, and filter the local collection.</p>
+      </div>
+      <div class="toolbar">
+        <input id="searchInput" placeholder="Search by title" />
+        <input id="genreInput" placeholder="Filter by genre" />
+        <button type="button" id="searchBtn" class="btn">Search</button>
+        <button type="button" id="filterBtn" class="btn ghost">Filter</button>
+        <button type="button" id="resetBtn" class="btn ghost">Reset</button>
+      </div>
+      <div id="movieGrid" class="grid"></div>
+    </section>
+
+    <section id="recommend" class="section">
+      <div class="section-head">
+        <h2>Recommend</h2>
+        <p>Start from a title you like. We match genres from your catalog and favourites.</p>
+      </div>
+      <div class="toolbar">
+        <input id="seedInput" placeholder="e.g. Inception" />
+        <button type="button" id="recommendBtn" class="btn">Recommend</button>
+        <input id="moodInput" placeholder="Mood for Gemini (optional)" />
+        <button type="button" id="moodBtn" class="btn ghost">Mood genres</button>
+      </div>
+      <p id="moodResult" class="mood-result"></p>
+      <div id="recommendGrid" class="grid"></div>
+    </section>
+
+    <section id="favourites" class="section">
+      <div class="section-head">
+        <h2>Favourites</h2>
+        <p>Sign in to keep a personal shortlist.</p>
+      </div>
+      <div id="favGrid" class="grid"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>CinePulse</span>
+    <a href="/docs">API docs</a>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
