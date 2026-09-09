@@ -93,13 +93,21 @@ MOVIES = [
 ]
 
 
-async def seed():
-    ensure_schema()
-    await database.connect()
+async def ensure_seed_movies():
+    existing_count = await database.fetch_val("SELECT COUNT(*) FROM movies")
+    if existing_count and int(existing_count) > 0:
+        return
+
     await database.execute(favourites_table.delete())
     await database.execute(movies_table.delete())
     for movie in MOVIES:
         await database.execute(movies_table.insert().values(**movie))
+
+
+async def seed():
+    ensure_schema()
+    await database.connect()
+    await ensure_seed_movies()
     await database.disconnect()
     print(f"Seeded {len(MOVIES)} movies with verified posters.")
 

@@ -18,6 +18,7 @@ from gemini_api import fetch_movies_from_gemini
 from models import ensure_schema, users_table
 import favourites as favourites_router
 import movies as movies_router
+from add_movies import ensure_seed_movies
 from recommend import recommend_movies
 from schemas import TokenOut, UserCreate, UserLogin, UserOut
 from tmdb_api import fetch_movie_details_tmdb, tmdb_configured
@@ -29,6 +30,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 async def lifespan(app: FastAPI):
     ensure_schema()
     await database.connect()
+    await ensure_seed_movies()
     yield
     await database.disconnect()
 
