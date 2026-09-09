@@ -1,0 +1,7 @@
+[build]
+  publish = "movie-recommendation-app-main/static"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
