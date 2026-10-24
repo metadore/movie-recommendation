@@ -1,3 +1,5 @@
+import os
+import socket
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -7,10 +9,14 @@ from fastapi.staticfiles import StaticFiles
 
 from auth import (
     create_access_token,
+    generate_totp_secret,
     get_current_user,
     get_optional_user,
+    get_totp_uri,
     hash_password,
+    require_role,
     verify_password,
+    verify_totp,
 )
 from contextlib import asynccontextmanager
 from database import database
@@ -20,10 +26,20 @@ import favourites as favourites_router
 import movies as movies_router
 from add_movies import ensure_seed_movies
 from recommend import recommend_movies
-from schemas import TokenOut, UserCreate, UserLogin, UserOut
+from schemas import (
+    MFASetupOut,
+    MFAVerifyIn,
+    TokenOut,
+    UserCreate,
+    UserLogin,
+    UserOut,
+)
 from tmdb_api import fetch_movie_details_tmdb, tmdb_configured
 
 STATIC_DIR = Path(__file__).parent / "static"
+
+# Identify this instance for load-balancing demo
+INSTANCE_ID = os.getenv("INSTANCE_ID", socket.gethostname())
 
 
 @asynccontextmanager
@@ -48,13 +64,22 @@ app.include_router(movies_router.router)
 app.include_router(favourites_router.router)
 
 
+# ---------------------------------------------------------------------------
+# Health / instance probe (used by load-balancer demo)
+# ---------------------------------------------------------------------------
+
 @app.get("/api/health")
 async def health():
     return {
         "message": "Backend running",
+        "instance": INSTANCE_ID,
         "tmdb_configured": tmdb_configured(),
     }
 
+
+# ---------------------------------------------------------------------------
+# Auth endpoints
+# ---------------------------------------------------------------------------
 
 @app.post("/api/auth/register", response_model=TokenOut)
 async def register(payload: UserCreate):
@@ -67,10 +92,16 @@ async def register(payload: UserCreate):
         users_table.insert().values(
             username=payload.username,
             password_hash=hash_password(payload.password),
+            role=payload.role if payload.role in ("user", "admin") else "user",
+            totp_enabled=False,
         )
     )
-    token = create_access_token(user_id, payload.username)
-    return TokenOut(access_token=token, username=payload.username)
+    token = create_access_token(
+        user_id, payload.username, role=payload.role or "user"
+    )
+    return TokenOut(
+        access_token=token, username=payload.username, role=payload.role or "user"
+    )
 
 
 @app.post("/api/auth/login", response_model=TokenOut)
@@ -80,14 +111,97 @@ async def login(payload: UserLogin):
     )
     if not user or not verify_password(payload.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    token = create_access_token(user["id"], user["username"])
-    return TokenOut(access_token=token, username=user["username"])
+
+    user_dict = dict(user)
+    role = user_dict.get("role", "user") or "user"
+
+    # MFA enabled – require TOTP code
+    if user_dict.get("totp_enabled"):
+        if not payload.totp_code:
+            # Signal client to ask for TOTP
+            return TokenOut(
+                access_token="",
+                username=user_dict["username"],
+                role=role,
+                mfa_required=True,
+            )
+        if not verify_totp(user_dict["totp_secret"], payload.totp_code):
+            raise HTTPException(status_code=401, detail="Invalid TOTP code")
+
+    token = create_access_token(
+        user_dict["id"], user_dict["username"], role=role, mfa_verified=True
+    )
+    return TokenOut(
+        access_token=token, username=user_dict["username"], role=role
+    )
 
 
 @app.get("/api/auth/me", response_model=UserOut)
 async def me(user=Depends(get_current_user)):
-    return UserOut(id=user["id"], username=user["username"])
+    return UserOut(
+        id=user["id"],
+        username=user["username"],
+        role=user.get("role", "user"),
+        totp_enabled=bool(user.get("totp_enabled", False)),
+    )
 
+
+# ---------------------------------------------------------------------------
+# MFA Setup endpoints
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/mfa/setup", response_model=MFASetupOut)
+async def mfa_setup(user=Depends(get_current_user)):
+    """Generate a new TOTP secret and return the provisioning URI."""
+    secret = generate_totp_secret()
+    await database.execute(
+        users_table.update()
+        .where(users_table.c.id == user["id"])
+        .values(totp_secret=secret, totp_enabled=False)  # not enabled yet
+    )
+    uri = get_totp_uri(secret, user["username"])
+    return MFASetupOut(totp_uri=uri, secret=secret)
+
+
+@app.post("/api/auth/mfa/enable")
+async def mfa_enable(body: MFAVerifyIn, user=Depends(get_current_user)):
+    """Confirm the first TOTP code and enable MFA for the account."""
+    db_user = await database.fetch_one(
+        users_table.select().where(users_table.c.id == user["id"])
+    )
+    if not db_user or not db_user["totp_secret"]:
+        raise HTTPException(status_code=400, detail="Run /api/auth/mfa/setup first")
+    if not verify_totp(db_user["totp_secret"], body.code):
+        raise HTTPException(status_code=400, detail="Invalid TOTP code")
+    await database.execute(
+        users_table.update()
+        .where(users_table.c.id == user["id"])
+        .values(totp_enabled=True)
+    )
+    return {"message": "MFA enabled successfully"}
+
+
+@app.post("/api/auth/mfa/disable")
+async def mfa_disable(body: MFAVerifyIn, user=Depends(get_current_user)):
+    """Disable MFA after verifying one final TOTP code."""
+    db_user = await database.fetch_one(
+        users_table.select().where(users_table.c.id == user["id"])
+    )
+    if not db_user or not db_user.get("totp_enabled"):
+        raise HTTPException(status_code=400, detail="MFA is not enabled")
+    if not verify_totp(db_user["totp_secret"], body.code):
+        raise HTTPException(status_code=400, detail="Invalid TOTP code")
+    await database.execute(
+        users_table.update()
+        .where(users_table.c.id == user["id"])
+        .values(totp_enabled=False, totp_secret=None)
+    )
+    return {"message": "MFA disabled"}
+
+
+# ---------------------------------------------------------------------------
+# Movie catalogue (admin-only write operations)
+# ---------------------------------------------------------------------------
 
 @app.get("/api/gemini/movies")
 async def gemini_movies(mood: str = Query("happy")):
@@ -118,7 +232,10 @@ async def recommend(
     return await recommend_movies(seed=movie, user_id=user_id)
 
 
+# ---------------------------------------------------------------------------
 # Legacy aliases so older clients keep working
+# ---------------------------------------------------------------------------
+
 @app.get("/movies")
 async def legacy_movies():
     from models import movies_table

@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 
+from auth import get_current_user, require_role
 from database import database
 from models import movies_table
 from posters import resolve_poster
@@ -16,7 +17,10 @@ async def get_movies():
 
 
 @router.post("", response_model=MovieOut)
-async def add_movie(movie: MovieCreate):
+async def add_movie(
+    movie: MovieCreate,
+    _user=Depends(require_role("admin")),  # only admins can add movies
+):
     payload = movie.model_dump()
     if not payload.get("image"):
         payload["image"] = resolve_poster(movie.title)
@@ -25,7 +29,11 @@ async def add_movie(movie: MovieCreate):
 
 
 @router.put("/{movie_id}")
-async def update_movie(movie_id: int, movie: MovieCreate):
+async def update_movie(
+    movie_id: int,
+    movie: MovieCreate,
+    _user=Depends(require_role("admin")),  # only admins can update movies
+):
     existing = await database.fetch_one(
         movies_table.select().where(movies_table.c.id == movie_id)
     )
@@ -40,7 +48,10 @@ async def update_movie(movie_id: int, movie: MovieCreate):
 
 
 @router.delete("/{movie_id}")
-async def delete_movie(movie_id: int):
+async def delete_movie(
+    movie_id: int,
+    _user=Depends(require_role("admin")),  # only admins can delete movies
+):
     from models import favourites_table
 
     existing = await database.fetch_one(

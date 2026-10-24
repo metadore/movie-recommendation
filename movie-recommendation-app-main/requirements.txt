@@ -9,3 +9,7 @@ pydantic
 PyJWT
 httpx
 pytest
+bcrypt
+pyotp
+qrcode[pil]
+Pillow
