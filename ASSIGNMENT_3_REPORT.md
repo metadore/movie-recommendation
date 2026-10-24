@@ -2,7 +2,8 @@
 
 **Application Domain:** Entertainment / Movie Recommendation  
 **Application Name:** CinePulse  
-**GitHub Branch:** `assignment-3`  
+**GitHub Repository:** [https://github.com/metadore/movie-recommendation](https://github.com/metadore/movie-recommendation)  
+**GitHub Branch Link:** [https://github.com/metadore/movie-recommendation/tree/assignment-3](https://github.com/metadore/movie-recommendation/tree/assignment-3)  
 **Stack:** FastAPI · SQLite · Nginx · Docker Compose · Netlify (Frontend)
 
 ---

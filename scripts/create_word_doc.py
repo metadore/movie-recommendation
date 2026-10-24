@@ -49,11 +49,10 @@ def create_report():
     run_title.font.color.rgb = primary_color
 
     sub_p = doc.add_paragraph()
-    sub_p.paragraph_format.space_after = Pt(16)
-    run_sub = sub_p.add_run("Domain: Entertainment / Movie Recommendation Platform (CinePulse)\nGitHub Branch: assignment-3  |  Platform: FastAPI, Nginx, Docker, SQLite")
+    sub_p.paragraph_format.space_after = Pt(8)
+    run_sub = sub_p.add_run("Domain: Entertainment / Movie Recommendation Platform (CinePulse)\nPlatform Stack: FastAPI, Nginx, Docker Compose, SQLite\nGitHub Repository: https://github.com/metadore/movie-recommendation\nGitHub Branch Link: https://github.com/metadore/movie-recommendation/tree/assignment-3")
     run_sub.font.name = "Calibri"
     run_sub.font.size = Pt(11)
-    run_sub.font.italic = True
     run_sub.font.color.rgb = gray_subtext
 
     # Divider line
@@ -319,9 +318,21 @@ def create_report():
     add_body(" GDPR Article 25 ('Data Protection by Design and by Default') mandates that by default, access to personal and system data must be limited strictly to authorized operations necessary for the specific role.", bold_prefix="Applicable Regulation: ")
     add_body(" Protects user profiles and catalog integrity against internal tampering and data destruction.", bold_prefix="Why Applicable: ")
 
+    # Submission Details
+    add_h1("Assignment Submission Links & Deliverables")
+    add_body(" https://github.com/metadore/movie-recommendation/tree/assignment-3", bold_prefix="Direct GitHub Assignment-3 Branch URL: ")
+    add_body(" https://github.com/metadore/movie-recommendation", bold_prefix="GitHub Repository: ")
+    add_body(" Assignment_3_Report.docx (Word Document with embedded screenshots) & ASSIGNMENT_3_REPORT.md", bold_prefix="Report Files: ")
+    add_body(" A 3-minute video presentation following the demo rubric.", bold_prefix="Demo Video: ")
+
     output_path = "Assignment_3_Report.docx"
-    doc.save(output_path)
-    print(f"Successfully generated {output_path}")
+    try:
+        doc.save(output_path)
+        print(f"Successfully generated {output_path}")
+    except PermissionError:
+        output_path = "Assignment_3_Report_Final.docx"
+        doc.save(output_path)
+        print(f"Assignment_3_Report.docx is currently open in Word. Saved to {output_path}")
 
 if __name__ == "__main__":
     create_report()
