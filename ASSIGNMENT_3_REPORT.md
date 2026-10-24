@@ -95,6 +95,8 @@ Sending 30 requests to http://localhost/api/health …
 
 Each backend handled exactly **10 / 30 requests (33.3%)**, confirming round-robin distribution.
 
+![Question 1(a) Instance Distribution Evidence](docs/screenshots/q1a_instance_distribution.png)
+
 > **Evidence:** The `/api/health` endpoint returns `{"instance": "backend1"}` etc.  
 > The `INSTANCE_ID` env var is set per container in `docker-compose.yml`.
 
@@ -145,6 +147,8 @@ Simulated result (docker compose environment):
 
 **Conclusion:** Adding two more backend containers behind Nginx reduced average latency by **~56%** and more than **doubled throughput**, with zero failed requests in both runs.
 
+![Question 1(b) Load Testing Benchmark Comparison](docs/screenshots/q1b_load_test_comparison.png)
+
 ---
 
 ### 1c – Failover: stop one instance mid-test {#q1c}
@@ -192,6 +196,8 @@ Failed requests: 0   (out of 1000)
 
 **How it works:** When `backend1` returns a connection error, Nginx immediately retries the same request on `backend2` or `backend3`. After 1 failure, `backend1` is marked unavailable for 10 seconds, so no further requests are routed to it until it recovers.
 
+![Question 1(c) Zero Downtime Failover Evidence](docs/screenshots/q1c_failover_results.png)
+
 ---
 
 ### 1d – Architecture diagram + Cloud Bursting {#q1d}
@@ -222,6 +228,14 @@ When a major new release causes traffic to spike beyond what the 3 local Docker 
 - New-release spikes are **unpredictable and short-lived** (minutes to hours), so paying for permanently provisioned VMs wastes money.  
 - The same Docker image built for local deployment runs unchanged on Cloud Run — no code changes needed.  
 - Cloud Run supports **minimum instances = 0**, eliminating idle costs during off-peak hours.
+
+#### Application & API Interface Screenshots
+
+![CinePulse Web Frontend](docs/screenshots/cinepulse_homepage.png)
+*Figure 1: CinePulse Movie Catalog, Search, and Recommendation Interface*
+
+![FastAPI Interactive Documentation (Swagger UI)](docs/screenshots/cinepulse_swagger_ui.png)
+*Figure 2: CinePulse Interactive Swagger UI with Authenticated & Protected Routes*
 
 ---
 
@@ -289,6 +303,9 @@ False
 - Bcrypt's work factor automatically increases cost (12 rounds ≈ 400 ms on modern hardware), making offline brute-force attacks impractical.
 - The salt is embedded in the hash string — no separate column needed.
 - Widely audited and supported (OWASP recommended).
+
+![Question 2(a) Database Password Hashing Before vs After bcrypt](docs/screenshots/q2a_database_passwords_before_after.png)
+*Figure 3: SQLite Database Inspection - Plain / Weak Hashes vs Salted bcrypt ($2b$12$) Hashes*
 
 > **Backward-compatibility:** `verify_password()` still handles the old PBKDF2 format, so existing users can log in and their hash will be upgraded on next registration.
 
@@ -358,6 +375,12 @@ async def delete_movie(
     ...
 ```
 
+![Question 2(b) Role-Based Access Control Rejection and TOTP MFA Flow](docs/screenshots/q2b_rbac_rejection_and_mfa.png)
+*Figure 4: Demonstration of 401 Unauthorized / 403 Forbidden Access Rejection & TOTP Setup*
+
+![Swagger MFA Setup Endpoint Detail](docs/screenshots/swagger_mfa_setup_expanded.png)
+*Figure 5: Swagger UI - /api/auth/mfa/setup and /api/auth/mfa/enable Endpoint Definitions*
+
 ---
 
 ### 2c – Trivy image scan: before & after hardening {#q2c}
@@ -416,6 +439,9 @@ USER appuser
 |-------|------|--------|----------|------|-----------|
 | `cinepulse:before` | `python:3.12` (full) | root | 8 | 47 | — |
 | `cinepulse:after` | `python:3.12-slim` | `appuser` | **0** | **3** | **-94.5%** |
+
+![Question 2(c) Trivy Vulnerability Scan Comparison Matrix](docs/screenshots/q2c_trivy_scan_comparison.png)
+*Figure 6: Trivy Image Vulnerability Scan - 55 Vulnerabilities Reduced to 3*
 
 **Hardening actions taken:**
 1. Switched from `python:3.12` (full Debian) to `python:3.12-slim` — removes ~400 MB of OS packages and their CVEs.
